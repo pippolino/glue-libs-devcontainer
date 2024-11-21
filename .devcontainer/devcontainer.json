@@ -1,0 +1,65 @@
+{
+	"name": "AWS Glue for GAS",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": "."
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.shell.linux": "/bin/bash",
+				"python.defaultInterpreterPath": "/usr/bin/python3",
+				"python.analysis.extraPaths": [
+					"/home/glue_user/aws-glue-libs/PyGlue.zip:/home/glue_user/spark/python/lib/py4j-0.10.9.5-src.zip:/home/glue_user/spark/python/"
+				]
+			},
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-toolsai.jupyter"
+			]
+		},
+		"jetbrains": {
+			"backend": "PyCharm"
+		}
+	},
+	"postCreateCommand": "echo >> ~/.bashrc && echo alias ll=\\'ls -alF\\' >> ~/.bashrc && echo 'Environment setup complete.'",
+	"postStartCommand": "nohup bash -c '/home/glue_user/jupyter/jupyter.sh &' > /tmp/postStart.out",
+	"remoteUser": "glue_user",
+	"mounts": [
+		"source=${localEnv:USERPROFILE}${localEnv:HOME}/.aws,target=/home/glue_user/.aws,type=bind,consistency=cached",
+		"source=${localEnv:USERPROFILE}${localEnv:HOME}/.ssh,target=/home/glue_user/.ssh,type=bind,consistency=cached"
+	],
+	"workspaceMount": "source=${localWorkspaceFolder},target=/home/glue_user/workspace,type=bind",
+	"workspaceFolder": "/home/glue_user/workspace",
+	"containerEnv": {
+		"AWS_PROFILE": "default",
+		"DISABLE_SSL": "true"
+	},
+	"forwardPorts": [4040, 18080, 8998, 8889],
+	"portsAttributes": {
+		"4040": {
+			"label": "Spark",
+			"protocol": "http"
+		},
+		"8889": {
+			"label": "JupyterLab",
+			"protocol": "http"
+		},
+		"8998": {
+			"label": "Livy",
+			"protocol": "http"
+		},
+		"18080": {
+			"label": "Spark History Server",
+			"protocol": "http"
+		}
+	},
+	"runArgs": [
+		"--name", "gas-glue_devcontainer",
+		"--publish", "4040:4040",
+		"--publish", "18080:18080",
+		"--publish", "8998:8998",
+		"--publish", "8889:8889"
+	]
+}
