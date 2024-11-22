@@ -67,11 +67,6 @@ RUN dnf update -y && dnf install -y zip krb5-devel shadow-utils lzo wget bind-ut
     rm -rf /var/cache/dnf &&\
     useradd -r -u 10000 -g root glue_user --create-home
 
-# Enable openssl legacy provider
-RUN sed -i 's/^##legacy = legacy_sect/legacy = legacy_sect/' /etc/ssl/openssl.cnf && \
-    sed -i 's/^##\[legacy_sect\]/[legacy_sect]/' /etc/ssl/openssl.cnf && \
-    sed -i 's/^##activate = 1/activate = 1/' /etc/ssl/openssl.cnf
-
 USER glue_user
 
 ENV PYSPARK_PYTHON=python3
@@ -84,6 +79,7 @@ ENV LIVY_INTEGRATION_TEST=true
 
 RUN mkdir -p ${GLUE_HOME}/aws-glue-libs && chown ${GLUE_CHOWN} ${GLUE_HOME}/aws-glue-libs
 
+COPY --from=awsglue-source /usr/share/log4j-cve-2021-44228-hotpatch/jdk17/Log4jHotPatchFat.jar /usr/share/log4j-cve-2021-44228-hotpatch/jdk17/Log4jHotPatchFat.jar
 COPY --from=awsglue-source ${GLUE_HOME}/aws-glue-libs/PyGlue.zip ${GLUE_HOME}/aws-glue-libs/PyGlue.zip
 COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_LIBS_DIR}/ ${GLUE_LIBS_DIR}/
 COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_HOME}/spark/ ${GLUE_HOME}/spark/
@@ -203,20 +199,24 @@ RUN pip3 install --user Cython==0.29.32 &&\
 ADD --chown=${GLUE_CHOWN} jupyter.sh ${GLUE_HOME}/jupyter/jupyter.sh
 RUN mkdir ${GLUE_HOME}/jupyter/logs
 
-# Make a backup of core-site.xml
-RUN cp ${GLUE_HOME}/spark/conf/core-site.xml ${GLUE_HOME}/spark/conf/core-site.xml.orig
-# Change spark configuration
-RUN sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderChainWithSSO|g' \
-    ${GLUE_HOME}/spark/conf/core-site.xml
-RUN sed -i 's|com.amazonaws.glue.catalog.metastore.DefaultAWSCredentialsProviderFactory|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderFactoryWithSSO|g' \
-    ${GLUE_HOME}/spark/conf/core-site.xml
-RUN sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderChainWithSSO|g' \
-    ${GLUE_HOME}/spark/conf/spark-defaults.conf
+# Fix SLF4J: Class path contains multiple SLF4J bindings.
+RUN rm ${GLUE_HOME}/spark/jars/slf4j-reload4j-1.7.36.jar ${GLUE_LIBS_DIR}/slf4j-reload4j-1.7.36.jar ${GLUE_LIBS_DIR}/log4j-slf4j-impl-2.17.2.jar
 
+# Fix log4j:WARN No appenders could be found for logger (org.apache.hadoop.metrics2.lib.MutableMetricsFactory).
+ADD --chown=${GLUE_CHOWN} log4j.properties ${GLUE_HOME}/spark/conf/log4j.properties
+RUN echo "spark.driver.extraJavaOptions=-Dlog4j.configurationFile=${GLUE_HOME}/spark/conf/log4j.properties" >> ${GLUE_HOME}/spark/conf/spark-defaults.conf && \
+    echo "spark.executor.extraJavaOptions=-Dlog4j.configurationFile=${GLUE_HOME}/spark/conf/log4j.properties" >> ${GLUE_HOME}/spark/conf/spark-defaults.conf
+
+# Change spark configuration
+RUN sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderChainWithSSO|g' ${GLUE_HOME}/spark/conf/core-site.xml && \
+    sed -i 's|com.amazonaws.glue.catalog.metastore.DefaultAWSCredentialsProviderFactory|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderFactoryWithSSO|g' ${GLUE_HOME}/spark/conf/core-site.xml &&\
+    sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderChainWithSSO|g' ${GLUE_HOME}/spark/conf/spark-defaults.conf
+
+ENV SPARK_SUBMIT_OPTS="-Dlog4j.configuration=file:${GLUE_HOME}/spark/conf/log4j2.properties"
 ENV LD_LIBRARY_PATH=${GLUE_HOME}/native_libs/amd64/hadoop-lzo-native:${GLUE_HOME}/native_libs/amd64/hadoop-native/
 ENV DEVCONTAINER=true
 
-WORKDIR ${GLUE_HOME}/workspace/
+WORKDIR /workspace/project/
 
 EXPOSE 18080/tcp 4040/tcp 8889/tcp 8998/tcp
 
