@@ -17,7 +17,7 @@ if [[ -z $(pgrep -f jupyter-lab) ]]; then
         --InlineBackend.figure_formats='{"png", "jpeg", "svg", "pdf"}' \
         --FileContentsManager.delete_to_trash=False \
         --ServerApp.allow_origin='*' \
-        --ServerApp.root_dir=/home/glue_user/workspace/ \
+        --ServerApp.root_dir=/workspace/ \
         --ServerApp.token='' \
         --ServerApp.password='' \
         --ServerApp.logging_config='{

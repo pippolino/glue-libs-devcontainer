@@ -30,8 +30,8 @@
 		"source=${localEnv:USERPROFILE}${localEnv:HOME}/.aws,target=/home/glue_user/.aws,type=bind,consistency=cached",
 		"source=${localEnv:USERPROFILE}${localEnv:HOME}/.ssh,target=/home/glue_user/.ssh,type=bind,consistency=cached"
 	],
-	"workspaceMount": "source=${localWorkspaceFolder},target=/home/glue_user/workspace,type=bind",
-	"workspaceFolder": "/home/glue_user/workspace",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace/project,type=bind",
+	"workspaceFolder": "/workspace",
 	"containerEnv": {
 		"AWS_PROFILE": "default",
 		"DISABLE_SSL": "true"
