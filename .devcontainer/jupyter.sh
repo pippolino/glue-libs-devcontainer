@@ -4,9 +4,9 @@ set -e
 
 if [[ -z $(pgrep -f jupyter-lab) ]]; then
     echo "Starting Livy and JupyterLab"
-    
+
     # Starting Livy Server
-    livy-server start
+    /home/glue_user/livy/bin/livy-server start
     
     # Starting JupyterLab
     jupyter lab \

@@ -53,13 +53,13 @@ ARG GLUE_HOME
 ARG GLUE_AWS
 ARG GLUE_CHOWN
 
-ARG TARGETARCH=amd64
+ARG TARGETARCH
 ARG BUILD_VER=glue-v4-container-amazonlinux-2023
 ENV LANG=en_US.UTF-8
 
 RUN dnf update -y && dnf install -y zip krb5-devel shadow-utils lzo wget bind-utils tar vim gcc hostname \
     openssl openssl-devel awscli java-1.8.0-amazon-corretto libjpeg-turbo-devel zlib-devel zlib-static \
-    bzip2-devel make libffi-devel sqlite-devel xz-devel python3-devel \
+    bzip2-devel make libffi-devel sqlite-devel xz-devel python3-devel procps-ng \
     readline-devel ncurses-devel libuuid-devel gdbm-devel automake autoconf lapack-devel \
     blas-devel cmake git &&\
     dnf groupinstall -y "Development Tools" &&\
@@ -117,7 +117,7 @@ COPY --from=awsglue-source /usr/local/share/jupyter/kernels/pysparkkernel/kernel
 COPY --from=awsglue-source /usr/local/share/jupyter/kernels/sparkkernel/kernel.json /usr/local/share/jupyter/kernels/sparkkernel/kernel.json
 COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_HOME}/livy/conf ${GLUE_HOME}/livy/conf
 COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_HOME}/.jupyter/lab/user-settings ${GLUE_HOME}/.jupyter/lab/user-settings
-COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_HOME}/native_libs/amd64 ${GLUE_HOME}/native_libs/amd64
+COPY --from=awsglue-source --chown=${GLUE_CHOWN} ${GLUE_HOME}/native_libs/${TARGETARCH} ${GLUE_HOME}/native_libs/${TARGETARCH}
 
 ENV PATH="${GLUE_HOME}/.local/bin:$PATH"
 
@@ -197,7 +197,7 @@ RUN pip3 install --user Cython==0.29.32 &&\
      rm -r ~/.cache/pip/selfcheck/
 
 ADD --chown=${GLUE_CHOWN} jupyter.sh ${GLUE_HOME}/jupyter/jupyter.sh
-RUN mkdir ${GLUE_HOME}/jupyter/logs
+RUN chmod +x ${GLUE_HOME}/jupyter/jupyter.sh && mkdir ${GLUE_HOME}/jupyter/logs
 
 # Fix SLF4J: Class path contains multiple SLF4J bindings.
 RUN rm ${GLUE_HOME}/spark/jars/slf4j-reload4j-1.7.36.jar ${GLUE_LIBS_DIR}/slf4j-reload4j-1.7.36.jar ${GLUE_LIBS_DIR}/log4j-slf4j-impl-2.17.2.jar
@@ -213,7 +213,7 @@ RUN sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianov
     sed -i 's|com.amazonaws.auth.DefaultAWSCredentialsProviderChain|com.medianovens.aws.sdkv1.auth.sso.DefaultAWSCredentialsProviderChainWithSSO|g' ${GLUE_HOME}/spark/conf/spark-defaults.conf
 
 ENV SPARK_SUBMIT_OPTS="-Dlog4j.configuration=file:${GLUE_HOME}/spark/conf/log4j2.properties"
-ENV LD_LIBRARY_PATH=${GLUE_HOME}/native_libs/amd64/hadoop-lzo-native:${GLUE_HOME}/native_libs/amd64/hadoop-native/
+ENV LD_LIBRARY_PATH=${GLUE_HOME}/native_libs/${TARGETARCH}/hadoop-lzo-native:${GLUE_HOME}/native_libs/${TARGETARCH}/hadoop-native/
 ENV DEVCONTAINER=true
 
 WORKDIR /workspace/project/
